@@ -1,50 +1,64 @@
 package com.mycompany.tcpimage3;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.OutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import javax.imageio.ImageIO;
 
 public class Send {
 
+    private static final int CHUNK_SIZE = 4096;
+
     public static void main(String[] args) throws Exception {
-        Socket socket = new Socket("localhost", 13085);
-        OutputStream outputStream = socket.getOutputStream();
+        Robot robot = new Robot();
 
-        String imagePath = "C:\\Users\\lucas.vargas\\Desktop\\TcpImage3\\src\\main\\java\\com\\mycompany\\tcpimage3\\resources\\tcheco.jpg";
-
-        // Obter o timestamp inicial do arquivo
-        long previousModifiedTimestamp = getModifiedTimestamp(imagePath);
+        ServerSocket serverSocket = new ServerSocket(13085);
 
         while (true) {
-            Thread.sleep(1000); // Aguardar um intervalo antes de verificar novamente
+            System.out.println("Waiting for connection...");
 
-            long currentModifiedTimestamp = getModifiedTimestamp(imagePath);
+            Socket socket = serverSocket.accept();
+            OutputStream outputStream = socket.getOutputStream();
 
-            if (currentModifiedTimestamp != previousModifiedTimestamp) {
-                // A imagem foi modificada, enviar para o Receive
-                BufferedImage image = ImageIO.read(new File(imagePath));
+            System.out.println("Connection established!");
 
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                ImageIO.write(image, "jpg", byteArrayOutputStream);
+            int panelWidth = 800;
+            int panelHeight = 800;
+            Rectangle screenRect = new Rectangle(panelWidth, panelHeight);
+            BufferedImage screenImage = robot.createScreenCapture(screenRect);
 
-                byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
-                outputStream.write(size);
-                outputStream.write(byteArrayOutputStream.toByteArray());
-                outputStream.flush();
+            int imageWidth = screenImage.getWidth();
+            int imageHeight = screenImage.getHeight();
 
-                System.out.println("Imagem enviada para o Receive.");
+            int chunkWidth = imageWidth / 2;
+            int chunkHeight = imageHeight / 2;
 
-                previousModifiedTimestamp = currentModifiedTimestamp;
+            for (int y = 0; y < imageHeight; y += chunkHeight) {
+                for (int x = 0; x < imageWidth; x += chunkWidth) {
+                    int subImageWidth = Math.min(chunkWidth, imageWidth - x);
+                    int subImageHeight = Math.min(chunkHeight, imageHeight - y);
+
+                    BufferedImage subImage = screenImage.getSubimage(x, y, subImageWidth, subImageHeight);
+
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                    ImageIO.write(subImage, "jpg", byteArrayOutputStream);
+
+                    byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
+                    outputStream.write(size);
+                    outputStream.write(byteArrayOutputStream.toByteArray());
+                    outputStream.flush();
+
+                    System.out.println("Sent chunk at (" + x + "," + y + ")");
+                }
             }
-        }
-    }
 
-    private static long getModifiedTimestamp(String imagePath) {
-        File file = new File(imagePath);
-        return file.lastModified();
+            System.out.println("All chunks sent!");
+
+            socket.close();
+        }
     }
 }
