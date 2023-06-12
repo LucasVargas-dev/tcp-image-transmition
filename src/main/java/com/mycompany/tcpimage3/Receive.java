@@ -12,6 +12,11 @@ import java.util.Arrays;
 
 public class Receive extends JFrame {
 
+    private static final int CHUNK_SIZE = 4096;
+    private static final int PANEL_WIDTH = 800;
+    private static final int PANEL_HEIGHT = 800;
+    private static final int CHUNK_WIDTH = PANEL_WIDTH / 2;
+    private static final int CHUNK_HEIGHT = PANEL_HEIGHT / 2;
     private static final int NUM_CHUNKS = 4;
     private JPanel panel;
     private JLabel[] labels;
@@ -77,39 +82,49 @@ public class Receive extends JFrame {
                     }
                 });
 
-                while (true) {
-                    for (int i = 0; i < NUM_CHUNKS; i++) {
-                        final int index = i;
-                        byte[] sizeBuffer = new byte[4];
-                        inputStream.read(sizeBuffer);
-                        int size = ByteBuffer.wrap(sizeBuffer).asIntBuffer().get();
+                try {
+                    while (true) {
+                        for (int i = 0; i < NUM_CHUNKS; i++) {
+                            final int index = i;
+                            byte[] sizeBuffer = new byte[4];
+                            inputStream.read(sizeBuffer);
+                            int size = ByteBuffer.wrap(sizeBuffer).asIntBuffer().get();
 
-                        byte[] imageBuffer = new byte[size];
-                        int bytesRead = 0;
-                        int offset = 0;
+                            byte[] imageBuffer = new byte[size];
+                            int bytesRead = 0;
+                            int offset = 0;
 
-                        while (bytesRead != -1 && offset < size) {
-                            bytesRead = inputStream.read(imageBuffer, offset, size - offset);
-                            if (bytesRead != -1) {
-                                offset += bytesRead;
+                            while (bytesRead != -1 && offset < size) {
+                                bytesRead = inputStream.read(imageBuffer, offset, size - offset);
+                                if (bytesRead != -1) {
+                                    offset += bytesRead;
+                                }
                             }
-                        }
 
-                        if (i < NUM_CHUNKS) {
-                            if (!Arrays.equals(imageBuffer, previousChunks[i])) {
-                                ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(imageBuffer);
-                                BufferedImage receivedImage = ImageIO.read(byteArrayInputStream);
+                            if (i < NUM_CHUNKS) {
+                                int chunkX = (i % 2) * CHUNK_WIDTH;
+                                int chunkY = (i / 2) * CHUNK_HEIGHT;
 
-                                receivedImages[i] = receivedImage;
-                                previousChunks[i] = Arrays.copyOf(imageBuffer, imageBuffer.length);
-                                System.out.println("Received updated chunk " + i);
+                                if (!Arrays.equals(imageBuffer, previousChunks[i])) {
+                                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(imageBuffer);
+                                    BufferedImage receivedImage = ImageIO.read(byteArrayInputStream);
 
-                                SwingUtilities.invokeLater(() -> {
-                                    labels[index].setIcon(new ImageIcon(receivedImage));
-                                });
+                                    receivedImages[i] = receivedImage;
+                                    previousChunks[i] = Arrays.copyOf(imageBuffer, imageBuffer.length);
+                                    System.out.println("Received updated chunk " + i);
+
+                                    SwingUtilities.invokeLater(() -> {
+                                        labels[index].setIcon(new ImageIcon(receivedImage));
+                                        panel.repaint(chunkX, chunkY, CHUNK_WIDTH, CHUNK_HEIGHT);
+                                    });
+                                }
                             }
+
                         }
                     }
+                    
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             } catch (Exception e) {
                 e.printStackTrace();

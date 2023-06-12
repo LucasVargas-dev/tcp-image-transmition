@@ -75,30 +75,30 @@ public class Send {
 
                     Thread.sleep(2000); // Aguarda 2 segundos
 
-                    // Gera um índice aleatório para o chunk que será alterado
-                    Random random = new Random();
-                    int randomChunkIndex = random.nextInt(NUM_CHUNKS);
-
-                    // Adiciona um ponto vermelho no chunk selecionado
-                    int chunkX = (randomChunkIndex % 2) * CHUNK_WIDTH;
-                    int chunkY = (randomChunkIndex / 2) * CHUNK_HEIGHT;
-                    BufferedImage chunkImage = robot.createScreenCapture(new Rectangle(chunkX, chunkY, CHUNK_WIDTH, CHUNK_HEIGHT));
-                    Graphics2D graphics = (Graphics2D) chunkImage.getGraphics();
-                    graphics.setColor(Color.RED);
-                    graphics.fillOval(CHUNK_WIDTH / 2 - 5, CHUNK_HEIGHT / 2 - 5, 10, 10);
-
-                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                    ImageIO.write(chunkImage, "jpg", byteArrayOutputStream);
-
-                    byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
-                    outputStream.write(size);
-                    outputStream.write(byteArrayOutputStream.toByteArray());
-                    outputStream.flush();
-
-                    System.out.println("Sent modified chunk at (" + chunkX + "," + chunkY + ")");
-
                     // Mantém a conexão aberta indefinidamente
                     while (true) {
+                        // Gera um índice aleatório para o chunk que será alterado
+                        Random random = new Random();
+                        int randomChunkIndex = random.nextInt(NUM_CHUNKS);
+
+                        // Adiciona um ponto vermelho no chunk selecionado
+                        int chunkX = (randomChunkIndex % 2) * CHUNK_WIDTH;
+                        int chunkY = (randomChunkIndex / 2) * CHUNK_HEIGHT;
+                        BufferedImage chunkImage = robot.createScreenCapture(new Rectangle(chunkX, chunkY, CHUNK_WIDTH, CHUNK_HEIGHT));
+                        Graphics2D graphics = (Graphics2D) chunkImage.getGraphics();
+                        graphics.setColor(Color.RED);
+                        graphics.fillOval(CHUNK_WIDTH / 2 - 5, CHUNK_HEIGHT / 2 - 5, 10, 10);
+
+                        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                        ImageIO.write(chunkImage, "jpg", byteArrayOutputStream);
+
+                        byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
+                        outputStream.write(size);
+                        outputStream.write(byteArrayOutputStream.toByteArray());
+                        outputStream.flush();
+
+                        System.out.println("Sent modified chunk at (" + chunkX + "," + chunkY + ")");
+
                         Thread.sleep(1000); // Aguarda 1 segundo antes de enviar novamente o chunk modificado
                     }
 
