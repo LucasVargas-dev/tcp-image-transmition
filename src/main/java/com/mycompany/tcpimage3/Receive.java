@@ -8,6 +8,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public class Receive extends JFrame {
 
@@ -15,6 +16,8 @@ public class Receive extends JFrame {
     private JPanel panel;
     private JLabel[] labels;
     private BufferedImage[] receivedImages;
+
+    private byte[][] previousChunks; // Armazena os chunks anteriores para comparação
 
     public Receive() {
         setTitle("Received Image");
@@ -32,6 +35,7 @@ public class Receive extends JFrame {
         setVisible(true);
 
         receivedImages = new BufferedImage[NUM_CHUNKS];
+        previousChunks = new byte[NUM_CHUNKS][];
         startClient();
     }
 
@@ -47,16 +51,25 @@ public class Receive extends JFrame {
                     int size = ByteBuffer.wrap(sizeBuffer).asIntBuffer().get();
 
                     byte[] imageBuffer = new byte[size];
-                    inputStream.read(imageBuffer);
+                    int bytesRead = 0;
+                    int offset = 0;
 
-                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(imageBuffer);
-                    BufferedImage receivedImage = ImageIO.read(byteArrayInputStream);
+                    while (bytesRead != -1 && offset < size) {
+                        bytesRead = inputStream.read(imageBuffer, offset, size - offset);
+                        if (bytesRead != -1) {
+                            offset += bytesRead;
+                        }
+                    }
 
-                    receivedImages[i] = receivedImage;
-                    System.out.println("Received chunk " + i);
+                    if (i < NUM_CHUNKS) {
+                        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(imageBuffer);
+                        BufferedImage receivedImage = ImageIO.read(byteArrayInputStream);
+
+                        receivedImages[i] = receivedImage;
+                        previousChunks[i] = Arrays.copyOf(imageBuffer, imageBuffer.length);
+                        System.out.println("Received chunk " + i);
+                    }
                 }
-
-                socket.close();
 
                 SwingUtilities.invokeLater(() -> {
                     for (int i = 0; i < NUM_CHUNKS; i++) {
@@ -64,6 +77,40 @@ public class Receive extends JFrame {
                     }
                 });
 
+                while (true) {
+                    for (int i = 0; i < NUM_CHUNKS; i++) {
+                        final int index = i;
+                        byte[] sizeBuffer = new byte[4];
+                        inputStream.read(sizeBuffer);
+                        int size = ByteBuffer.wrap(sizeBuffer).asIntBuffer().get();
+
+                        byte[] imageBuffer = new byte[size];
+                        int bytesRead = 0;
+                        int offset = 0;
+
+                        while (bytesRead != -1 && offset < size) {
+                            bytesRead = inputStream.read(imageBuffer, offset, size - offset);
+                            if (bytesRead != -1) {
+                                offset += bytesRead;
+                            }
+                        }
+
+                        if (i < NUM_CHUNKS) {
+                            if (!Arrays.equals(imageBuffer, previousChunks[i])) {
+                                ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(imageBuffer);
+                                BufferedImage receivedImage = ImageIO.read(byteArrayInputStream);
+
+                                receivedImages[i] = receivedImage;
+                                previousChunks[i] = Arrays.copyOf(imageBuffer, imageBuffer.length);
+                                System.out.println("Received updated chunk " + i);
+
+                                SwingUtilities.invokeLater(() -> {
+                                    labels[index].setIcon(new ImageIcon(receivedImage));
+                                });
+                            }
+                        }
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
