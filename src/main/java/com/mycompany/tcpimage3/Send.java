@@ -1,16 +1,8 @@
 package com.mycompany.tcpimage3;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.util.Random;
 
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -93,7 +85,10 @@ public class Send {
                         ImageIO.write(chunkImage, "jpg", byteArrayOutputStream);
 
                         byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
+                        byte[] position = ByteBuffer.allocate(4).putInt(randomChunkIndex).array();
+
                         outputStream.write(size);
+                        outputStream.write(position);
                         outputStream.write(byteArrayOutputStream.toByteArray());
                         outputStream.flush();
 

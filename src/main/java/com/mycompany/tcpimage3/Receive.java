@@ -85,10 +85,15 @@ public class Receive extends JFrame {
                 try {
                     while (true) {
                         for (int i = 0; i < NUM_CHUNKS; i++) {
-                            final int index = i;
                             byte[] sizeBuffer = new byte[4];
+                            byte[] positionBuffer = new byte[4];
+
                             inputStream.read(sizeBuffer);
+                            inputStream.read(positionBuffer);
+
                             int size = ByteBuffer.wrap(sizeBuffer).asIntBuffer().get();
+                            int position = ByteBuffer.wrap(positionBuffer).asIntBuffer().get();
+                            final int index = position;
 
                             byte[] imageBuffer = new byte[size];
                             int bytesRead = 0;
@@ -101,17 +106,17 @@ public class Receive extends JFrame {
                                 }
                             }
 
-                            if (i < NUM_CHUNKS) {
-                                int chunkX = (i % 2) * CHUNK_WIDTH;
-                                int chunkY = (i / 2) * CHUNK_HEIGHT;
+                            if (position < NUM_CHUNKS) {
+                                int chunkX = (position % 2) * CHUNK_WIDTH;
+                                int chunkY = (position / 2) * CHUNK_HEIGHT;
 
-                                if (!Arrays.equals(imageBuffer, previousChunks[i])) {
+                                if (!Arrays.equals(imageBuffer, previousChunks[position])) {
                                     ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(imageBuffer);
                                     BufferedImage receivedImage = ImageIO.read(byteArrayInputStream);
 
-                                    receivedImages[i] = receivedImage;
-                                    previousChunks[i] = Arrays.copyOf(imageBuffer, imageBuffer.length);
-                                    System.out.println("Received updated chunk " + i);
+                                    receivedImages[position] = receivedImage;
+                                    previousChunks[position] = Arrays.copyOf(imageBuffer, imageBuffer.length);
+                                    System.out.println("Received updated chunk " + position);
 
                                     SwingUtilities.invokeLater(() -> {
                                         labels[index].setIcon(new ImageIcon(receivedImage));
@@ -119,7 +124,6 @@ public class Receive extends JFrame {
                                     });
                                 }
                             }
-
                         }
                     }
                     
